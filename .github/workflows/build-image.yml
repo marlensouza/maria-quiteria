@@ -1,0 +1,53 @@
+#------------------------------------------------------
+#                      Cabeçalho
+#------------------------------------------------------
+# Nome da action e quando ela é disparada
+name: Fluxo para construcao e publicacao do container
+on: 
+
+#------------------------------------------------------
+#                      Variáveis
+#------------------------------------------------------
+
+
+#------------------------------------------------------
+#                   Início dos jobs
+#------------------------------------------------------
+jobs:
+
+#------------------------------------------------------
+#              job 01 - Lint do Dockerfile
+#------------------------------------------------------
+
+
+#------------------------------------------------------
+#              job 02 - Teste do container
+#------------------------------------------------------
+
+
+#------------------------------------------------------
+#              job 03 - Scan da imagem
+#------------------------------------------------------
+  scan:
+    if: github.event_name = release
+    name: Scan da Imagem
+    needs: test
+    runs-on: ubuntu-18.04
+    steps:
+#---------------------step 03-01-----------------------
+      - name: Checkout code
+        uses: actions/checkout@v2
+#---------------------step 03-02-----------------------
+      - name: Build an image from Dockerfile
+        run: |
+          docker build -t maria-quiteria .
+#---------------------step 03-03-----------------------
+      - name: Scanear Imagem com Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'maria-quiteria'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'

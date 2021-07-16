@@ -28,7 +28,7 @@ jobs:
 #              job 03 - Scan da imagem
 #------------------------------------------------------
   scan:
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' && github.event.action == 'create'
     name: Scan da Imagem
 #     needs: test
     runs-on: ubuntu-18.04

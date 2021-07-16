@@ -3,7 +3,10 @@
 #------------------------------------------------------
 # Nome da action e quando ela é disparada
 name: Fluxo para construcao e publicacao do container
-on: 
+on:
+  release:
+    types:
+      - created
 
 #------------------------------------------------------
 #                      Variáveis
@@ -14,7 +17,6 @@ on:
 #                   Início dos jobs
 #------------------------------------------------------
 jobs:
-
 #------------------------------------------------------
 #              job 01 - Lint do Dockerfile
 #------------------------------------------------------
@@ -29,9 +31,9 @@ jobs:
 #              job 03 - Scan da imagem
 #------------------------------------------------------
   scan:
-    if: github.event_name = release
+    if: github.event_name == 'release' && github.event.action == 'created'
     name: Scan da Imagem
-    needs: test
+#     needs: test
     runs-on: ubuntu-18.04
     steps:
 #---------------------step 03-01-----------------------

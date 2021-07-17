@@ -9,18 +9,24 @@ on:
       - created
 
 #------------------------------------------------------
-#                      Variáveis
-#------------------------------------------------------
-
-
-#------------------------------------------------------
 #                   Início dos jobs
 #------------------------------------------------------
 jobs:
+
 #------------------------------------------------------
 #              job 01 - Lint do Dockerfile
 #------------------------------------------------------
-
+  lint:
+    name: Lint do Dockerfile
+    runs-on: ubuntu-18.04
+    steps:
+#---------------------step 01-01-----------------------
+      - name: Checkout
+        uses: actions/checkout@v2
+#---------------------step 01-02-----------------------
+      - uses: hadolint/hadolint-action@v1.5.0
+        with:
+          dockerfile: Dockerfile
 
 #------------------------------------------------------
 #              job 02 - Teste do container
@@ -31,7 +37,7 @@ jobs:
 #              job 03 - Scan da imagem
 #------------------------------------------------------
   scan:
-    if: github.event_name == 'release' && github.event.action == 'created'
+    if: ${{ github.event_name == 'release' && github.event.action == 'created' }}
     name: Scan da Imagem
 #     needs: test
     runs-on: ubuntu-18.04
@@ -53,3 +59,59 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
+
+#------------------------------------------------------
+# job 04 - Build e Push do container para o Docker Hub
+#------------------------------------------------------
+  push:
+    name: Publica o Container
+    if: ${{ github.event_name == 'release' && github.event.action == 'created' }}
+    needs: scan
+    runs-on: ubuntu-18.04
+    steps:
+#---------------------step 04-01-----------------------
+      - name: Checkout
+        uses: actions/checkout@v2
+#---------------------step 04-02-----------------------
+      - name: Ativa QEMU
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: linux/amd64
+#---------------------step 04-03-----------------------
+      - name: BuildX - Suporte remote-cache, secrets, etc...
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+#---------------------step 04-04-----------------------
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+#---------------------step 04-05-----------------------
+      - name: Login DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+#---------------------step 04-06-----------------------
+      - uses: olegtarasov/get-tag@v2.1
+        id: tagName
+#---------------------step 04-06-----------------------
+      - name: Build and Push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ secrets.DOCKERHUB_ORGANIZATION }}/maria-quiteria:$GIT_TAG_NAME
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+#---------------------step 04-07-----------------------
+      - name: Digest
+        run: echo "Versão final da imagem é -> maria-quiteria:$GIT_TAG_NAME"
+        
